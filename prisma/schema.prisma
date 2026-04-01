@@ -1,0 +1,65 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL") 
+}
+
+enum Role {
+  VIEWER
+  ANALYST
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+model User {
+  id           String       @id @default(uuid())
+  name         String
+  email        String       @unique
+  passwordHash String
+  role         Role         @default(VIEWER)
+  status       UserStatus   @default(ACTIVE)
+  
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  deletedAt    DateTime?    // Soft delete support
+
+  transactions Transaction[]
+
+  @@map("users")
+}
+
+model Transaction {
+  id          String          @id @default(uuid())
+  userId      String
+  amount      Decimal         @db.Decimal(10, 2) // Prevents floating-point math errors
+  type        TransactionType
+  category    String
+  date        DateTime        @default(now())
+  notes       String?
+  
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  deletedAt   DateTime?       // Soft delete support
+
+  user        User            @relation(fields: [userId], references: [id])
+
+  // Performance indexes for Dashboard aggregations
+  @@index([userId, date])
+  @@index([userId, category])
+
+  @@map("transactions")
+}
