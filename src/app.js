@@ -1,22 +1,35 @@
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
+import swaggerUi from 'swagger-ui-express'; 
+import yaml from 'yamljs';                  
+import path from 'path';
 
-// 1. Import routes and custom error class
+//  custom error class
 import authRoutes from './routes/auth.route.js';
 import userRoutes from './routes/user.route.js';
+import transactionRoutes from './routes/transaction.route.js';
+
+
 import { ApiError } from './utils/ApiError.js';
 
 const app = express();
+
+// --- Load Swagger Document ---
+const swaggerDocument = yaml.load(path.join(process.cwd(), 'src/docs/swagger.yaml'));
 
 // --- Global Middlewares ---
 app.use(express.json());
 app.use(cors());
 app.use(morgan('dev'));
 
-// --- Mount the Routes ---
+// ---  Swagger UI ---
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
+// ---  Routes ---
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/transactions', transactionRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {
