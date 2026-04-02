@@ -4,6 +4,7 @@ import morgan from 'morgan';
 
 // 1. Import routes and custom error class
 import authRoutes from './routes/auth.route.js';
+import userRoutes from './routes/user.route.js';
 import { ApiError } from './utils/ApiError.js';
 
 const app = express();
@@ -15,6 +16,7 @@ app.use(morgan('dev'));
 
 // --- Mount the Routes ---
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {
