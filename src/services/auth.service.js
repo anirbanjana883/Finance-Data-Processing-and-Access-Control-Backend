@@ -1,76 +1,60 @@
-import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { ApiError } from '../utils/ApiError.js'; 
+import prisma from '../config/db.js'; // Use Singleton
+import { generateToken } from '../utils/token.js'; // Use Utility
+import { ApiError } from '../utils/ApiError.js';
 
-const prisma = new PrismaClient();
+// preventy timing attack migration 
+const DUMMY_HASH = process.env.DUMMY_HASH; 
 
-// register
+// register user 
 export const registerUser = async (name, email, password) => {
-  // user existaance check
-  const existingUser = await prisma.user.findUnique({ where: { email } });
+  // email normalizqation
+  const normalizedEmail = email.toLowerCase().trim();
+
+  const existingUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
   if (existingUser) {
     throw new ApiError(409, 'A user with this email already exists');
   }
 
-  // hashing
-  const salt = await bcrypt.genSalt(10);
-  const passwordHash = await bcrypt.hash(password, salt);
+  // 12 round of hashing 
+  const passwordHash = await bcrypt.hash(password, 12);
 
-  // creating user 
   const user = await prisma.user.create({
     data: {
       name,
-      email,
+      email: normalizedEmail,
       passwordHash,
-      // role defaults to VIEWER, status defaults to ACTIVE based on schema
     }
   });
 
-  // jwt token generation
-  const token = jwt.sign(
-    { id: user.id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN }
-  );
+  const token = generateToken(user);
 
   return {
-    user: { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status },
+    user: { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status }, 
     token
   };
 };
 
-// login
+// login user
 export const loginUser = async (email, password) => {
-  // finding user by email
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) {
+  // email normalization 
+  const normalizedEmail = email.toLowerCase().trim();
+  const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+
+  // time attack prevention 
+  // if no user is there still hashhing isd done to create same time for hasing 
+  const isMatch = user 
+    ? await bcrypt.compare(password, user.passwordHash)
+    : await bcrypt.compare(password, DUMMY_HASH);
+
+  if (!user || !isMatch) {
     throw new ApiError(401, 'Invalid email or password');
   }
 
-  // activeness of user checked
-  if (user.status === 'INACTIVE') {
-    throw new ApiError(403, 'This account has been deactivated by an Administrator');
-  }
-  if (user.deletedAt !== null) {
-    throw new ApiError(404, 'This account no longer exists');
-  }
-
-  // password verification
-  const isMatch = await bcrypt.compare(password, user.passwordHash);
-  if (!isMatch) {
-    throw new ApiError(401, 'Invalid email or password');
-  }
-
-  // jwt token generation
-  const token = jwt.sign(
-    { id: user.id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN }
-  );
+  const token = generateToken(user);
 
   return {
-    user: { id: user.id, email: user.email, role: user.role, status: user.status },
+    user: { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status }, 
     token
   };
 };

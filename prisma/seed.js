@@ -1,21 +1,26 @@
-// prisma/seed.js
 import { PrismaClient } from '@prisma/client';
 import { faker } from '@faker-js/faker';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting database seeding...');
+  console.log('Starting database seeding...');
 
-  // test user
-  const user = await prisma.user.create({
-    data: {
-      name: 'Test User',
-      email: 'test@example.com',
-      passwordHash: 'test@123',
-      role: 'VIEWER'
+  // finding exixting email
+  const targetEmail = process.env.TEST_USER_EMAIL; 
+
+  const user = await prisma.user.findUnique({
+    where: { 
+        email: targetEmail.toLowerCase().trim() 
     }
   });
+
+  if (!user) {
+      console.error('Please make sure you have registered this user first.');
+      process.exit(1);
+  }
+
+  console.log(`Found user , Generating transactions...`);
 
   const TOTAL_RECORDS = 50000; 
   const BATCH_SIZE = 5000;     
@@ -23,13 +28,13 @@ async function main() {
   const categories = ['Food', 'Rent', 'Salary', 'Entertainment', 'Utilities', 'Transport'];
   const types = ['INCOME', 'EXPENSE'];
 
-
+  // batch update
   for (let i = 0; i < TOTAL_RECORDS; i += BATCH_SIZE) {
     const batch = [];
 
     for (let j = 0; j < BATCH_SIZE; j++) {
       batch.push({
-        userId: user.id,
+        userId: user.id, 
         amount: faker.finance.amount({ min: 10, max: 5000, dec: 2 }),
         type: faker.helpers.arrayElement(types),
         category: faker.helpers.arrayElement(categories),
