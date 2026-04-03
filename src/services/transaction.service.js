@@ -1,16 +1,14 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../config/db.js'; 
 import { ApiError } from '../utils/ApiError.js';
 
-const prisma = new PrismaClient();
-
 // create transaction
-export const createTransaction = async (data, actingUserId) => {
-    //  Validation (Must be strictly > 0)
-    if (Number(data.amount) <= 0) {
-        throw new ApiError(400, "Amount must be strictly greater than 0");
+export const createTransaction = async (data, actingUser) => {
+    let targetUserId;
+    if (actingUser.role === 'ADMIN' && data.userId) {
+        targetUserId = data.userId;
+    } else {
+        targetUserId = actingUser.id;
     }
-
-    const targetUserId = data.userId || actingUserId;
 
     return await prisma.transaction.create({
         data: {
@@ -24,44 +22,62 @@ export const createTransaction = async (data, actingUserId) => {
     });
 };
 
-// retreve transaction
+// get transactions
 export const getTransactions = async (user, queryParams) => {
     const { page = 1, limit = 10, type, category, startDate, endDate, search } = queryParams;
-    const skip = (page - 1) * limit;
+    
+    // pagination guard 
+    const pageNum = Math.max(parseInt(page) || 1, 1);
+    const limitNum = Math.min(Math.max(parseInt(limit) || 10, 1), 100);
+    const skip = (pageNum - 1) * limitNum;
 
-    // hidiing soft delete record
+    // Base Condition
     const where = { deletedAt: null };
 
-    // Access Control
-    if (user.role === 'VIEWER') {
+    // access control
+    if (user.role !== 'ADMIN') {
         where.userId = user.id;
     }
 
-    //  Dynamic Filters
     if (type) where.type = type;
     if (category) where.category = category;
     
-    if (startDate && endDate) {
-        where.date = {
-            gte: new Date(startDate),
-            lte: new Date(endDate)
-        };
+    // date filter 
+    if (startDate || endDate) {
+        where.date = {};
+        if (startDate) where.date.gte = new Date(startDate);
+        if (endDate) where.date.lte = new Date(endDate);
     }
 
-    //  Fuzzy Search 
+    // prisma filteriang 
     if (search) {
-        where.OR = [
-            { category: { contains: search, mode: 'insensitive' } },
-            { notes: { contains: search, mode: 'insensitive' } }
+        where.AND = [
+            ...(where.AND || []),
+            {
+                OR: [
+                    { category: { contains: search, mode: 'insensitive' } },
+                    { notes: { contains: search, mode: 'insensitive' } }
+                ]
+            }
         ];
     }
 
     const [transactions, totalRecords] = await Promise.all([
         prisma.transaction.findMany({
             where,
-            skip: Number(skip),
-            take: Number(limit),
-            orderBy: { date: 'desc' }
+            skip: skip,
+            take: limitNum,
+            orderBy: { date: 'desc' },
+            // daat leak guard 
+            select: {
+                id: true,
+                amount: true,
+                type: true,
+                category: true,
+                date: true,
+                notes: true,
+                userId: true
+            }
         }),
         prisma.transaction.count({ where })
     ]);
@@ -70,14 +86,14 @@ export const getTransactions = async (user, queryParams) => {
         transactions,
         meta: {
             totalRecords,
-            currentPage: Number(page),
-            totalPages: Math.ceil(totalRecords / limit)
+            currentPage: pageNum,
+            totalPages: Math.ceil(totalRecords / limitNum)
         }
     };
 };
 
-// update transaction
-export const updateTransaction = async (transactionId, updateData) => {
+// update transaction 
+export const updateTransaction = async (transactionId, updateData, actingUser) => {
     const existing = await prisma.transaction.findFirst({
         where: { id: transactionId, deletedAt: null }
     });
@@ -86,24 +102,25 @@ export const updateTransaction = async (transactionId, updateData) => {
         throw new ApiError(404, "Transaction not found");
     }
 
-    if (updateData.amount !== undefined && Number(updateData.amount) <= 0) {
-        throw new ApiError(400, "Amount must be strictly greater than 0");
+    if (actingUser.role !== 'ADMIN' && existing.userId !== actingUser.id) {
+        throw new ApiError(403, "Not allowed to modify this transaction");
     }
 
+    // partial update 
     return await prisma.transaction.update({
         where: { id: transactionId },
         data: {
-            amount: updateData.amount,
-            type: updateData.type,
-            category: updateData.category,
-            date: updateData.date ? new Date(updateData.date) : undefined,
-            notes: updateData.notes
+            ...(updateData.amount !== undefined && { amount: updateData.amount }),
+            ...(updateData.type && { type: updateData.type }),
+            ...(updateData.category && { category: updateData.category }),
+            ...(updateData.date && { date: new Date(updateData.date) }),
+            ...(updateData.notes && { notes: updateData.notes })
         }
     });
 };
 
-// delete transactions
-export const deleteTransaction = async (transactionId) => {
+// delete transaction
+export const deleteTransaction = async (transactionId, actingUser) => {
     const existing = await prisma.transaction.findFirst({
         where: { id: transactionId, deletedAt: null }
     });
@@ -112,7 +129,10 @@ export const deleteTransaction = async (transactionId) => {
         throw new ApiError(404, "Transaction not found");
     }
 
-    // Soft delete
+    if (actingUser.role !== 'ADMIN' && existing.userId !== actingUser.id) {
+        throw new ApiError(403, "Not allowed to delete this transaction");
+    }
+
     return await prisma.transaction.update({
         where: { id: transactionId },
         data: { deletedAt: new Date() }
