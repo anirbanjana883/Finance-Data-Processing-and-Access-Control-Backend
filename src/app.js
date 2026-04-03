@@ -9,6 +9,7 @@ import path from 'path';
 import authRoutes from './routes/auth.route.js';
 import userRoutes from './routes/user.route.js';
 import transactionRoutes from './routes/transaction.route.js';
+import dashboardRoutes from './routes/dashboard.route.js';
 
 
 import { ApiError } from './utils/ApiError.js';
@@ -30,6 +31,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/transactions', transactionRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {
