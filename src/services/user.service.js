@@ -1,21 +1,34 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../config/db.js'; 
 import { ApiError } from '../utils/ApiError.js';
 
-const prisma = new PrismaClient();
+export const getAllUsers = async (queryParams) => {
+    const { page = 1, limit = 10, status, search, sortBy = 'createdAt', order = 'desc' } = queryParams;
 
-// get all user optimised with paginaittion
-export const getAllUsers = async (page = 1, limit = 10, status) => {
-    //  pagination clac.
-    const skip = (page - 1) * limit;
+    const pageNum = Math.max(parseInt(page) || 1, 1);
+    const limitNum = Math.min(Math.max(parseInt(limit) || 10, 1), 100);
+    const skip = (pageNum - 1) * limitNum;
     
-    const where = status ? { status } : {};
+    // prevent returnnning deleted user 
+    const where = { deletedAt: null };
+
+    if (status) {
+        where.status = status; // zod validastion 
+    }
+
+    // fuzzy search 
+    if (search) {
+        where.OR = [
+            { name: { contains: search, mode: 'insensitive' } },
+            { email: { contains: search, mode: 'insensitive' } }
+        ];
+    }
 
     const [users, totalRecords] = await Promise.all([
         prisma.user.findMany({
             where,
-            skip: Number(skip),
-            take: Number(limit),
-            orderBy: { createdAt: 'desc' },
+            skip: skip,
+            take: limitNum,
+            orderBy: { [sortBy]: order }, 
             select: { 
                 id: true,
                 name: true,
@@ -32,42 +45,50 @@ export const getAllUsers = async (page = 1, limit = 10, status) => {
         users,
         meta: {
             totalRecords,
-            currentPage: Number(page),
-            totalPages: Math.ceil(totalRecords / limit)
+            currentPage: pageNum,
+            totalPages: Math.ceil(totalRecords / limitNum)
         }
     };
 };
 
-// updtae role
-export const updateUserRole = async (userId, newRole) => {
-    const validRoles = ['VIEWER', 'ANALYST', 'ADMIN'];
-    if (!validRoles.includes(newRole)) {
-        throw new ApiError(400, "Invalid role. Must be VIEWER, ANALYST, or ADMIN.");
+export const updateUserRole = async (targetUserId, newRole, actingAdminId) => {
+    // admin self role demotion lock
+    if (targetUserId === actingAdminId && newRole !== 'ADMIN') {
+        throw new ApiError(400, "Security restriction: You cannot remove your own ADMIN role.");
     }
 
-    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const user = await prisma.user.findUnique({ where: { id: targetUserId } });
     if (!user) throw new ApiError(404, "User not found");
 
-    return await prisma.user.update({
-        where: { id: userId },
+    const updatedUser = await prisma.user.update({
+        where: { id: targetUserId },
         data: { role: newRole },
         select: { id: true, name: true, email: true, role: true, status: true }
     });
+
+    // audit logging 
+    console.log(`[AUDIT] Admin ${actingAdminId} changed role of user ${targetUserId} to ${newRole}`);
+
+    return updatedUser;
 };
 
-// update status
-export const updateUserStatus = async (userId, newStatus) => {
-    const validStatuses = ['ACTIVE', 'INACTIVE'];
-    if (!validStatuses.includes(newStatus)) {
-        throw new ApiError(400, "Invalid status. Must be ACTIVE or INACTIVE.");
+export const updateUserStatus = async (targetUserId, newStatus, actingAdminId) => {
+    // self deactivation lock 
+    if (targetUserId === actingAdminId && newStatus === 'INACTIVE') {
+        throw new ApiError(400, "Security restriction: You cannot deactivate your own account.");
     }
 
-    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const user = await prisma.user.findUnique({ where: { id: targetUserId } });
     if (!user) throw new ApiError(404, "User not found");
 
-    return await prisma.user.update({
-        where: { id: userId },
+    const updatedUser = await prisma.user.update({
+        where: { id: targetUserId },
         data: { status: newStatus },
         select: { id: true, name: true, email: true, role: true, status: true }
     });
+
+    // audit logging 
+    console.log(`[AUDIT] Admin ${actingAdminId} changed status of user ${targetUserId} to ${newStatus}`);
+
+    return updatedUser;
 };
