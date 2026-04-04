@@ -8,7 +8,9 @@ export const transactionQuerySchema = z.object({
         category: z.string().optional(),
         startDate: z.string().optional(), 
         endDate: z.string().optional(),
-        search: z.string().optional()
+        search: z.string().optional(),
+        sortBy: z.enum(['date', 'amount', 'category', 'createdAt']).optional(),
+        order: z.enum(['asc', 'desc']).optional()
     })
 });
 
@@ -19,9 +21,8 @@ export const createTransactionSchema = z.object({
             errorMap: () => ({ message: "Type must be INCOME or EXPENSE" })
         }),
         category: z.string().min(1, "Category is required"),
-        date: z.string().optional(), 
-        notes: z.string().optional(),
-        userId: z.string().uuid("Invalid user ID format").optional()
+        date: z.string().datetime().optional(),
+        notes: z.string().optional()
     })
 });
 
@@ -30,7 +31,7 @@ export const updateTransactionSchema = z.object({
         amount: z.number().positive("Amount must be strictly greater than 0").optional(),
         type: z.enum(['INCOME', 'EXPENSE']).optional(),
         category: z.string().min(1).optional(),
-        date: z.string().optional(),
+        date: z.string().datetime().optional(),
         notes: z.string().optional()
     })
 });

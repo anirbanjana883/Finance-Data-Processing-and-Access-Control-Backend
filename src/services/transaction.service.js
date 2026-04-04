@@ -1,55 +1,66 @@
 import prisma from '../config/db.js'; 
 import { ApiError } from '../utils/ApiError.js';
 
-// create transaction
+// create transaction 
 export const createTransaction = async (data, actingUser) => {
-    let targetUserId;
-    if (actingUser.role === 'ADMIN' && data.userId) {
-        targetUserId = data.userId;
-    } else {
-        targetUserId = actingUser.id;
-    }
+    //category  normalisation
+    const normalizedCategory = data.category.toLowerCase().trim();
 
-    return await prisma.transaction.create({
-        data: {
-            userId: targetUserId,
-            amount: data.amount,
-            type: data.type, 
-            category: data.category,
-            date: data.date ? new Date(data.date) : new Date(),
-            notes: data.notes
-        }
+    return await prisma.$transaction(async (tx) => {
+        const transaction = await tx.transaction.create({
+            data: {
+                createdById: actingUser.id,
+                orgId: actingUser.orgId, 
+                amount: data.amount,
+                type: data.type, 
+                category: normalizedCategory,
+                date: data.date ? new Date(data.date) : new Date(),
+                notes: data.notes
+            }
+        });
+
+        await tx.auditLog.create({
+            data: {
+                orgId: actingUser.orgId,
+                actorId: actingUser.id,
+                targetId: transaction.id, //  BUG FIX 
+                action: 'TRANSACTION_CREATED',
+                newValue: `${data.type} of ${data.amount} in ${normalizedCategory}`
+            }
+        });
+
+        return transaction;
     });
 };
 
-// get transactions
-export const getTransactions = async (user, queryParams) => {
-    const { page = 1, limit = 10, type, category, startDate, endDate, search } = queryParams;
+// retreve transactions
+export const getTransactions = async (actingUser, queryParams) => {
+    const { page = 1, limit = 10, type, category, startDate, endDate, search, sortBy = 'date', order = 'desc' } = queryParams;
     
-    // pagination guard 
+    // BUG FIX - DATE VALIDATION
+    if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+        throw new ApiError(400, "Invalid date range: startDate cannot be after endDate");
+    }
+
     const pageNum = Math.max(parseInt(page) || 1, 1);
     const limitNum = Math.min(Math.max(parseInt(limit) || 10, 1), 100);
     const skip = (pageNum - 1) * limitNum;
 
-    // Base Condition
-    const where = { deletedAt: null };
-
-    // access control
-    if (user.role !== 'ADMIN') {
-        where.userId = user.id;
-    }
+    const where = { 
+        deletedAt: null,
+        status: 'ACTIVE', 
+        orgId: actingUser.orgId 
+    };
 
     if (type) where.type = type;
-    if (category) where.category = category;
+    if (category) where.category = category.toLowerCase().trim();
     
-    // date filter 
     if (startDate || endDate) {
         where.date = {};
         if (startDate) where.date.gte = new Date(startDate);
         if (endDate) where.date.lte = new Date(endDate);
     }
 
-    // prisma filteriang 
     if (search) {
         where.AND = [
             ...(where.AND || []),
@@ -64,77 +75,88 @@ export const getTransactions = async (user, queryParams) => {
 
     const [transactions, totalRecords] = await Promise.all([
         prisma.transaction.findMany({
-            where,
-            skip: skip,
-            take: limitNum,
-            orderBy: { date: 'desc' },
-            // daat leak guard 
+            where, skip, take: limitNum, 
+            orderBy: { [sortBy]: order }, 
             select: {
-                id: true,
-                amount: true,
-                type: true,
-                category: true,
-                date: true,
-                notes: true,
-                userId: true
+                id: true, amount: true, type: true, category: true, 
+                date: true, notes: true, status: true,
+                createdBy: { select: { id: true, name: true, email: true } }
             }
         }),
         prisma.transaction.count({ where })
     ]);
 
-    return {
-        transactions,
-        meta: {
-            totalRecords,
-            currentPage: pageNum,
-            totalPages: Math.ceil(totalRecords / limitNum)
-        }
-    };
+    return { transactions, meta: { totalRecords, currentPage: pageNum, pageSize: limitNum, totalPages: Math.ceil(totalRecords / limitNum) } };
 };
 
 // update transaction 
 export const updateTransaction = async (transactionId, updateData, actingUser) => {
+    // neg. amount guard
+    if (updateData.amount !== undefined && updateData.amount <= 0) {
+        throw new ApiError(400, "Invalid amount: must be greater than zero");
+    }
+
     const existing = await prisma.transaction.findFirst({
-        where: { id: transactionId, deletedAt: null }
+        where: { id: transactionId, orgId: actingUser.orgId, status: 'ACTIVE', deletedAt: null } 
     });
 
-    if (!existing) {
-        throw new ApiError(404, "Transaction not found");
-    }
+    if (!existing) throw new ApiError(404, "Transaction not found");
 
-    if (actingUser.role !== 'ADMIN' && existing.userId !== actingUser.id) {
-        throw new ApiError(403, "Not allowed to modify this transaction");
-    }
+    const normalizedCategory = updateData.category ? updateData.category.toLowerCase().trim() : undefined;
 
-    // partial update 
-    return await prisma.transaction.update({
-        where: { id: transactionId },
-        data: {
-            ...(updateData.amount !== undefined && { amount: updateData.amount }),
-            ...(updateData.type && { type: updateData.type }),
-            ...(updateData.category && { category: updateData.category }),
-            ...(updateData.date && { date: new Date(updateData.date) }),
-            ...(updateData.notes && { notes: updateData.notes })
-        }
+    return await prisma.$transaction(async (tx) => {
+        const updated = await tx.transaction.update({
+            where: { id: transactionId },
+            data: {
+                ...(updateData.amount !== undefined && { amount: updateData.amount }),
+                ...(updateData.type && { type: updateData.type }),
+                ...(normalizedCategory && { category: normalizedCategory }),
+                ...(updateData.date && { date: new Date(updateData.date) }),
+                ...(updateData.notes && { notes: updateData.notes })
+            }
+        });
+
+        await tx.auditLog.create({
+            data: {
+                orgId: actingUser.orgId,
+                actorId: actingUser.id,
+                targetId: transactionId, 
+                action: 'TRANSACTION_UPDATED',
+                // json tracing 
+                oldValue: JSON.stringify(existing), 
+                newValue: JSON.stringify(updated)
+            }
+        });
+
+        return updated;
     });
 };
 
-// delete transaction
+// soft delete transaction
 export const deleteTransaction = async (transactionId, actingUser) => {
     const existing = await prisma.transaction.findFirst({
-        where: { id: transactionId, deletedAt: null }
+        where: { id: transactionId, orgId: actingUser.orgId, status: 'ACTIVE', deletedAt: null } 
     });
 
-    if (!existing) {
-        throw new ApiError(404, "Transaction not found");
-    }
+    if (!existing) throw new ApiError(404, "Transaction not found");
 
-    if (actingUser.role !== 'ADMIN' && existing.userId !== actingUser.id) {
-        throw new ApiError(403, "Not allowed to delete this transaction");
-    }
+    return await prisma.$transaction(async (tx) => {
+        const deleted = await tx.transaction.update({
+            where: { id: transactionId },
+            data: { deletedAt: new Date(), status: 'ARCHIVED' }
+        });
 
-    return await prisma.transaction.update({
-        where: { id: transactionId },
-        data: { deletedAt: new Date() }
+        await tx.auditLog.create({
+            data: {
+                orgId: actingUser.orgId,
+                actorId: actingUser.id,
+                targetId: transactionId, 
+                action: 'TRANSACTION_DELETED',
+                oldValue: JSON.stringify(existing),
+                newValue: 'ARCHIVED'
+            }
+        });
+
+        return deleted;
     });
 };
