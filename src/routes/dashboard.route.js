@@ -4,10 +4,9 @@ import { verifyJWT } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
-// loggin user 
+// must be logged in 
 router.use(verifyJWT);
 
-// viewrs - own stats ,  analyst, admin - all
 router.get('/summary', getSummary);
 
 export default router;
