@@ -93,7 +93,7 @@ export const loginUser = async (email, password, loginOrgId) => {
 
     if (!user || !isMatch) {
          if (!loginOrgId && user?.role !== 'MASTER_ADMIN') {
-             throw new ApiError(400, 'Organization ID is required for non-admin users');
+             throw new ApiError(400, 'Organization ID is required for non - Master-Admin users');
          }
          throw new ApiError(401, 'Invalid email, password, or Organization ID');
     }

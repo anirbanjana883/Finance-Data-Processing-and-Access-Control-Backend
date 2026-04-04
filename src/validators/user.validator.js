@@ -11,6 +11,17 @@ export const userQuerySchema = z.object({
     })
 });
 
+export const createUserSchema = z.object({
+    body: z.object({
+        name: z.string().min(2, "Name must be at least 2 characters"),
+        email: z.string().email("Invalid email format"),
+        password: z.string().min(6, "Temporary password must be at least 6 characters"),
+        role: z.enum(['VIEWER', 'ANALYST', 'ADMIN'], {
+            errorMap: () => ({ message: "Role must be VIEWER, ANALYST, or ADMIN" })
+        })
+    })
+});
+
 export const updateRoleSchema = z.object({
     body: z.object({
         role: z.enum(['VIEWER', 'ANALYST', 'ADMIN'], {
