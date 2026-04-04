@@ -1,60 +1,119 @@
 import bcrypt from 'bcryptjs';
-import prisma from '../config/db.js'; // Use Singleton
-import { generateToken } from '../utils/token.js'; // Use Utility
+import prisma from '../config/db.js';
+import { generateToken } from '../utils/token.js';
 import { ApiError } from '../utils/ApiError.js';
 
-// preventy timing attack migration 
-const DUMMY_HASH = process.env.DUMMY_HASH; 
+const DUMMY_HASH = process.env.DUMMY_HASH || '$2a$12$DUMMYHASHFORPREVENTINGTIMINGATTACKSDUMMYHASH'; 
 
-// register user 
-export const registerUser = async (name, email, password) => {
-  // email normalizqation
-  const normalizedEmail = email.toLowerCase().trim();
+// system bootstarp
+export const bootstrapMaster = async (name, email, password) => {
+    const existingMaster = await prisma.user.findFirst({ where: { role: 'MASTER_ADMIN' } });
+    if (existingMaster) throw new ApiError(403, "System is already bootstrapped.");
 
-  const existingUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
-  if (existingUser) {
-    throw new ApiError(409, 'A user with this email already exists');
-  }
+    const salt = await bcrypt.genSalt(12);
+    const masterAdmin = await prisma.user.create({
+        data: {
+            name,
+            email: email.toLowerCase().trim(),
+            passwordHash: await bcrypt.hash(password, salt),
+            role: 'MASTER_ADMIN',
+            orgId: null 
+        }
+    });
 
-  // 12 round of hashing 
-  const passwordHash = await bcrypt.hash(password, 12);
-
-  const user = await prisma.user.create({
-    data: {
-      name,
-      email: normalizedEmail,
-      passwordHash,
-    }
-  });
-
-  const token = generateToken(user);
-
-  return {
-    user: { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status }, 
-    token
-  };
+    return { user: { id: masterAdmin.id, name: masterAdmin.name, email: masterAdmin.email, role: masterAdmin.role }, token: generateToken(masterAdmin) };
 };
 
-// login user
-export const loginUser = async (email, password) => {
-  // email normalization 
-  const normalizedEmail = email.toLowerCase().trim();
-  const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+// tenant creatyion
+export const createOrganization = async (orgName, adminData, actingUser) => {
+    if (actingUser.role !== 'MASTER_ADMIN') throw new ApiError(403, "Only MASTER_ADMIN can create organizations");
 
-  // time attack prevention 
-  // if no user is there still hashhing isd done to create same time for hasing 
-  const isMatch = user 
-    ? await bcrypt.compare(password, user.passwordHash)
-    : await bcrypt.compare(password, DUMMY_HASH);
+    const existingOrg = await prisma.organization.findUnique({ where: { name: orgName } });
+    if (existingOrg) throw new ApiError(409, "Organization name already taken.");
 
-  if (!user || !isMatch) {
-    throw new ApiError(401, 'Invalid email or password');
-  }
+    const normalizedEmail = adminData.email.toLowerCase().trim();
+    const salt = await bcrypt.genSalt(12);
+    const passwordHash = await bcrypt.hash(adminData.password, salt);
 
-  const token = generateToken(user);
+    // db transaction
+    const [newOrg, newAdmin] = await prisma.$transaction(async (tx) => {
+        const org = await tx.organization.create({ data: { name: orgName } });
 
-  return {
-    user: { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status }, 
-    token
-  };
+        const admin = await tx.user.create({
+            data: {
+                name: adminData.name,
+                email: normalizedEmail,
+                passwordHash,
+                role: 'ADMIN',
+                orgId: org.id
+            }
+        });
+
+        await tx.auditLog.create({
+            data: {
+                orgId: org.id,
+                actorId: actingUser.id,
+                targetId: admin.id,
+                action: 'USER_CREATED', 
+                newValue: 'ADMIN Created'
+            }
+        });
+
+        return [org, admin];
+    });
+
+    return { organization: newOrg, admin: { id: newAdmin.id, email: newAdmin.email, role: newAdmin.role, orgId: newAdmin.orgId } };
+};
+
+// login
+export const loginUser = async (email, password, loginOrgId) => {
+    const normalizedEmail = email.toLowerCase().trim();
+    
+    const whereClause = loginOrgId 
+        ? { email: normalizedEmail, orgId: loginOrgId }
+        : { email: normalizedEmail, role: 'MASTER_ADMIN' };
+
+    const user = await prisma.user.findFirst({ 
+        where: whereClause,
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            status: true,
+            orgId: true,
+            passwordHash: true 
+        }
+    });
+
+    // dummy hash is used to halusinate the hacker
+    const isMatch = user 
+        ? await bcrypt.compare(password, user.passwordHash)
+        : await bcrypt.compare(password, DUMMY_HASH);
+
+    if (!user || !isMatch) {
+         if (!loginOrgId && user?.role !== 'MASTER_ADMIN') {
+             throw new ApiError(400, 'Organization ID is required for non-admin users');
+         }
+         throw new ApiError(401, 'Invalid email, password, or Organization ID');
+    }
+
+    if (user.status === 'INACTIVE') throw new ApiError(403, 'Account is deactivated.');
+
+    if (user.orgId) {
+        await prisma.auditLog.create({
+            data: {
+                orgId: user.orgId,
+                actorId: user.id,
+                action: 'USER_LOGIN' 
+            }
+        });
+    }
+
+    const token = generateToken(user); 
+
+    return {
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, orgId: user.orgId }, 
+        token
+    };
 };
