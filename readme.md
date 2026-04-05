@@ -123,7 +123,7 @@ npm run dev
 
 ---
 
-## 📡 Exhaustive API Documentation
+## 📡 Detailed API Documentation
 
 **Base URL:** `http://localhost:5000/api`
 
@@ -142,7 +142,7 @@ npm run dev
 
 ## 1️⃣ Authentication & Provisioning (`/api/auth`)
 
-### Bootstrap System Admin
+### 📌 Bootstrap System Admin
 
 Creates the foundational "God Mode" account.
 
@@ -165,7 +165,7 @@ Creates the foundational "God Mode" account.
 
 ---
 
-### Setup New Organization (Tenant)
+### 📌 Setup New Organization (Tenant)
 
 Provisions a new company and its initial CEO/Admin.
 
@@ -184,7 +184,7 @@ Provisions a new company and its initial CEO/Admin.
 
 ---
 
-### Tenant Login
+### 📌 Tenant Login
 
 - **Endpoint:** `POST /auth/login`
 - **Auth Required:** Public *(Protected by `loginLimiter` to prevent brute force)*
@@ -206,7 +206,7 @@ Provisions a new company and its initial CEO/Admin.
 
 ---
 
-### Get Current Profile
+### 📌 Get Current Profile
 
 - **Endpoint:** `GET /auth/me`
 - **Auth Required:** Bearer Token
@@ -219,7 +219,7 @@ Provisions a new company and its initial CEO/Admin.
 
 > All routes in this block require **Bearer Token** and the **`ADMIN`** role.
 
-### Invite Employee
+### 📌 Invite Employee
 
 - **Endpoint:** `POST /users`
 
@@ -239,7 +239,7 @@ Provisions a new company and its initial CEO/Admin.
 
 ---
 
-### Get All Users (Directory)
+### 📌 Get All Users (Directory)
 
 - **Endpoint:** `GET /users`
 
@@ -257,7 +257,7 @@ Provisions a new company and its initial CEO/Admin.
 
 ---
 
-### Change Employee Role
+### 📌 Change Employee Role
 
 - **Endpoint:** `PATCH /users/:id/role`
 - **Request Params:** `id` (UUID of the target user)
@@ -275,7 +275,7 @@ Provisions a new company and its initial CEO/Admin.
 
 ---
 
-### Change Employee Status (Deactivate)
+### 📌 Change Employee Status (Deactivate)
 
 - **Endpoint:** `PATCH /users/:id/status`
 - **Request Params:** `id` (UUID of the target user)
@@ -295,7 +295,7 @@ Provisions a new company and its initial CEO/Admin.
 
 ## 3️⃣ Transaction Engine (`/api/transactions`)
 
-### Fetch Transactions (Ledger)
+### 📌 Fetch Transactions (Ledger)
 
 - **Endpoint:** `GET /transactions`
 - **Auth Required:** Bearer Token
@@ -319,7 +319,7 @@ Provisions a new company and its initial CEO/Admin.
 
 ---
 
-### Create Transaction
+### 📌 Create Transaction
 
 - **Endpoint:** `POST /transactions`
 - **Auth Required:** Bearer Token
@@ -339,7 +339,7 @@ Provisions a new company and its initial CEO/Admin.
 
 ---
 
-### Update Transaction
+### 📌 Update Transaction
 
 - **Endpoint:** `PATCH /transactions/:id`
 - **Auth Required:** Bearer Token
@@ -354,7 +354,7 @@ Provisions a new company and its initial CEO/Admin.
 
 ---
 
-### Delete Transaction (Archive)
+### 📌 Delete Transaction (Archive)
 
 - **Endpoint:** `DELETE /transactions/:id`
 - **Auth Required:** Bearer Token
@@ -368,7 +368,7 @@ Provisions a new company and its initial CEO/Admin.
 
 ## 4️⃣ Analytics Dashboard (`/api/dashboard`)
 
-### Get Executive Summary
+### 📌 Get Executive Summary
 
 Compiles massive multi-table aggregations in a single parallel O(1) database trip.
 
