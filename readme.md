@@ -11,7 +11,7 @@ This project leverages a modern Node.js ecosystem, prioritizing type-safety (via
 **Core Infrastructure:**
 * **Runtime:** Node.js
 * **Framework:** Express.js (v5)
-* **Database:** PostgreSQL
+* **Database:** PostgreSQL (v6)
 * **ORM:** Prisma (`@prisma/client`) - *For type-safe database queries and interactive transactions.*
 
 **Security & Validation:**
@@ -30,6 +30,20 @@ This project leverages a modern Node.js ecosystem, prioritizing type-safety (via
 **Development Tools:**
 * **Seeding:** Faker.js (`@faker-js/faker`) - *For generating massive realistic datasets.*
 * **Hot Reloading:** Nodemon
+
+---
+
+## 🌐 Live Deployment
+
+The backend is fully deployed and accessible online. The Node.js/Express server is hosted on **Render**, and the PostgreSQL database is securely managed via **Supabase**.
+
+* 🟢 **Base API URL:** `https://finance-data-processing-and-access-pusc.onrender.com/api`
+* 🩺 **Health Check:** `https://finance-data-processing-and-access-pusc.onrender.com/health`
+* 📖 **Interactive API Docs (Swagger):** `https://finance-data-processing-and-access-pusc.onrender.com/api-docs`
+
+*(Note: The Render free tier spins down after 15 minutes of inactivity. If the first request takes 30-50 seconds to respond, the server is just waking up!)*
+
+---
 
 ## 🏛️ System Architecture
 
@@ -125,7 +139,8 @@ npm install
 
 ```env
 PORT = 5000
-DATABASE_URL = "postgresql://username:password@localhost:5432/finance_db"
+DATABASE_URL = "your_PostgreSQL_DATABASE_URL"
+DIRECT_URL = "your_PostgreSQL_DIRECT_URL"
 JWT_SECRET = "your_super_secret_key"
 JWT_EXPIRES_IN = "1d"
 TEST_USER_EMAIL = "your_test_user_email" # for seeding
