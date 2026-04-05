@@ -24,6 +24,9 @@ This project leverages a modern Node.js ecosystem, prioritizing type-safety (via
 * **API Docs:** Swagger UI (`swagger-ui-express`, `yamljs`) - *OpenAPI 3.0 specification.*
 * **Logging:** Winston (`winston`) & Morgan (`morgan`) - *Structured application and HTTP request logging.*
 
+**Testing:**
+* **Integration Tests:** Vitest (`vitest`) & Supertest (`supertest`) - *Automated API route simulation and endpoint assertions.*
+
 **Development Tools:**
 * **Seeding:** Faker.js (`@faker-js/faker`) - *For generating massive realistic datasets.*
 * **Hot Reloading:** Nodemon
@@ -69,7 +72,7 @@ The platform follows a classic N-Tier Architecture with a strict "Fat Service, S
 ┌──────────────────────────────────────────────────┐
 │              POSTGRESQL DATABASE                 │
 │                                                  │
-│  [ Tables ]                                      │
+│   [ Tables ]                                     │
 │   ├─ Organizations (The Multi-Tenant Root)       │
 │   ├─ Users (email, password, role, orgId)        │
 │   ├─ Transactions (amount, type, orgId)          │
@@ -121,11 +124,12 @@ npm install
 **2. Configure Environment Variables (`.env`):**
 
 ```env
-PORT=5000
-DATABASE_URL="postgresql://username:password@localhost:5432/finance_db"
-JWT_SECRET="your_super_secret_key"
-JWT_EXPIRES_IN="1d"
-TEST_USER_EMAIL="tony@stark.com" # Used for seeding
+PORT = 5000
+DATABASE_URL = "postgresql://username:password@localhost:5432/finance_db"
+JWT_SECRET = "your_super_secret_key"
+JWT_EXPIRES_IN = "1d"
+TEST_USER_EMAIL = "your_test_user_email" # for seeding
+DUMMY_HASH = "your_dummy_hash"
 ```
 
 **3. Sync Database Schema:**
@@ -151,8 +155,33 @@ npm run dev
 ```bash
 http://localhost:5000/api-docs
 ```
+
+**7. Run the test suite:**
+
+```bash
+npm run test
+```
 ---
 
+## 🧪 Integration Testing
+
+The project includes an automated integration test suite built with **Vitest** and **Supertest**. Instead of testing isolated functions, this suite tests the MVP critical path by simulating real HTTP requests against the live database.
+
+**Test Coverage Scope:**
+1. **Authentication:** Verifies successful login and Zod validation blocking for invalid credentials.
+2. **RBAC Security:** Proves that the `VIEWER` role is strictly blocked (`403 Forbidden`) from accessing raw `/transactions` ledger data, while `ADMIN` is permitted.
+3. **Analytics Engine:** Verifies the `/dashboard/summary` endpoint returns the correct, complex JSON structure and valid aggregated data types.
+
+**How to run the tests:**
+
+1. Ensure your `.env` file contains the seeded test credentials:
+```env
+TEST_ADMIN_EMAIL="your_TEST_ADMIN_EMAIL"
+TEST_VIEWER_EMAIL="your_TEST_VIEWER_EMAIL"
+TEST_ADMIN_PASSWORD="your_TEST_ADMIN_PASSWORD"
+TEST_VIEWER_PASSWORD="your_TEST_VIEWER_PASSWORD"
+TEST_ORG_ID="your_TEST_ORG_ID"
+```
 ## 📡 Detailed API Documentation
 
 **Base URL:** `http://localhost:5000/api`
