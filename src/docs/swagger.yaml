@@ -4,8 +4,10 @@ info:
   description: Multi-tenant B2B financial backend with granular RBAC and analytical aggregations.
   version: 1.0.0
 servers:
+  - url: https://finance-dashboard-api-xyz.onrender.com/api
+    description: 🟢 Production Server (Live Cloud)
   - url: http://localhost:5000/api
-    description: Local Development Server
+    description: 💻 Local Development Server
 
 components:
   securitySchemes:
