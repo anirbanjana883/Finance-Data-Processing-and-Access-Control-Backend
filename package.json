@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon src/server.js",
+    "start": "node src/server.js", 
     "seed": "node scripts/seed.js",
-    "test": "vitest run --testTimeout=15000"
+    "test": "vitest run"
   },
   "keywords": [],
   "author": "",
