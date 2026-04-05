@@ -493,3 +493,416 @@ While the current architecture is highly optimized for enterprise multi-tenancy,
 - **Background Jobs (BullMQ / RabbitMQ):**
   - Offload heavy CSV/PDF financial export generation to a background worker.
   - Handle transactional emails (e.g., "You've been invited to Stark Industries") asynchronously to prevent blocking the main Express event loop.
+
+### 📊 Sample Dashboard Response
+
+Below is a real-world example of the aggregated financial data returned by the `/dashboard/summary` endpoint. This data is computed in real-time across multiple database tables.
+
+**Success Response (`200 OK`):**
+
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "organizationName": "Google",
+    "summary": {
+      "totalBalance": -110105.97999999952,
+      "totalIncome": 6258248.62,
+      "totalExpenses": 6368354.6,
+      "savingsRate": -1.8,
+      "totalRecords": 5000,
+      "avgDailySpend": 14974,
+      "savingsStreak": 4
+    },
+    "trends": [
+      {
+        "month": "Nov 25",
+        "income": 472170.4199999996,
+        "expense": 547478.7199999997,
+        "balance": -75308.30000000016
+      },
+      {
+        "month": "Dec 25",
+        "income": 522732.64000000025,
+        "expense": 548134.3300000001,
+        "balance": -100709.98999999999
+      },
+      {
+        "month": "Jan 26",
+        "income": 516295.1600000001,
+        "expense": 474210.0300000002,
+        "balance": -58624.8600000001
+      },
+      {
+        "month": "Feb 26",
+        "income": 488457.2,
+        "expense": 459682.8599999998,
+        "balance": -29850.519999999902
+      },
+      {
+        "month": "Mar 26",
+        "income": 560877.9400000003,
+        "expense": 526668.91,
+        "balance": 4358.510000000359
+      },
+      {
+        "month": "Apr 26",
+        "income": 201109.69,
+        "expense": 66597.78,
+        "balance": 138870.42000000036
+      }
+    ],
+    "monthlyComparison": [
+      {
+        "month": "Nov 25",
+        "income": 472170.4199999996,
+        "expense": 547478.7199999997,
+        "savings": -75308.30000000016
+      },
+      {
+        "month": "Dec 25",
+        "income": 522732.64000000025,
+        "expense": 548134.3300000001,
+        "savings": -25401.689999999828
+      },
+      {
+        "month": "Jan 26",
+        "income": 516295.1600000001,
+        "expense": 474210.0300000002,
+        "savings": 42085.12999999989
+      },
+      {
+        "month": "Feb 26",
+        "income": 488457.2,
+        "expense": 459682.8599999998,
+        "savings": 28774.3400000002
+      },
+      {
+        "month": "Mar 26",
+        "income": 560877.9400000003,
+        "expense": 526668.91,
+        "savings": 34209.03000000026
+      },
+      {
+        "month": "Apr 26",
+        "income": 201109.69,
+        "expense": 66597.78,
+        "savings": 134511.91
+      }
+    ],
+    "categoryBreakdown": [
+      {
+        "category": "Software",
+        "amount": 891637.91,
+        "percentage": 14,
+        "context": "14% of total expenses"
+      },
+      {
+        "category": "Marketing",
+        "amount": 864345.41,
+        "percentage": 13.6,
+        "context": "13.6% of total expenses"
+      },
+      {
+        "category": "Rent",
+        "amount": 823510.93,
+        "percentage": 12.9,
+        "context": "12.9% of total expenses"
+      },
+      {
+        "category": "Utilities",
+        "amount": 819233.39,
+        "percentage": 12.9,
+        "context": "12.9% of total expenses"
+      },
+      {
+        "category": "Food",
+        "amount": 798249.63,
+        "percentage": 12.5,
+        "context": "12.5% of total expenses"
+      }
+    ],
+    "recentTransactions": [
+      {
+        "id": "0553f899-d7a7-4aba-91ec-7325d427de54",
+        "title": "Testing the POST route",
+        "category": "Legal",
+        "amount": 99999.99,
+        "type": "INCOME",
+        "date": "2026-04-04"
+      },
+      {
+        "id": "8e3a1d5c-3dfc-4b22-853c-d3f8ed81b1b7",
+        "title": "Usus auctor cupressus summopere addo truculenter delectus ago.",
+        "category": "Salary",
+        "amount": 866.16,
+        "type": "INCOME",
+        "date": "2026-04-04"
+      },
+      {
+        "id": "3459f868-b956-4fab-b1e3-aaeec6584407",
+        "title": "Ter magnam aegrus suus in colo.",
+        "category": "Transport",
+        "amount": 2459.15,
+        "type": "INCOME",
+        "date": "2026-04-04"
+      },
+      {
+        "id": "d8f1e495-feae-4571-a679-0a4a027db36f",
+        "title": "Alter vinco appello.",
+        "category": "Marketing",
+        "amount": -2166.37,
+        "type": "EXPENSE",
+        "date": "2026-04-04"
+      },
+      {
+        "id": "0c642f63-c2c6-4486-9680-c621214ec9de",
+        "title": "Ventus ocer corona quia laboriosam aliquam acerbitas vitae temeritas adipisci.",
+        "category": "Rent",
+        "amount": 1730.87,
+        "type": "INCOME",
+        "date": "2026-04-04"
+      }
+    ],
+    "categoryAnalysis": [
+      {
+        "category": "Software",
+        "amount": 891637.91,
+        "percentage": 14,
+        "context": "14% of total expenses"
+      },
+      {
+        "category": "Marketing",
+        "amount": 864345.41,
+        "percentage": 13.6,
+        "context": "13.6% of total expenses"
+      },
+      {
+        "category": "Rent",
+        "amount": 823510.93,
+        "percentage": 12.9,
+        "context": "12.9% of total expenses"
+      },
+      {
+        "category": "Utilities",
+        "amount": 819233.39,
+        "percentage": 12.9,
+        "context": "12.9% of total expenses"
+      },
+      {
+        "category": "Food",
+        "amount": 798249.63,
+        "percentage": 12.5,
+        "context": "12.5% of total expenses"
+      },
+      {
+        "category": "Legal",
+        "amount": 763399.16,
+        "percentage": 12,
+        "context": "12% of total expenses"
+      },
+      {
+        "category": "Transport",
+        "amount": 756889.97,
+        "percentage": 11.9,
+        "context": "11.9% of total expenses"
+      },
+      {
+        "category": "Salary",
+        "amount": 651088.2,
+        "percentage": 10.2,
+        "context": "10.2% of total expenses"
+      }
+    ],
+    "dailyTrend": [
+      {
+        "date": "2026-03-07",
+        "expense": 8204.91
+      },
+      {
+        "date": "2026-03-08",
+        "expense": 20319.46
+      },
+      {
+        "date": "2026-03-09",
+        "expense": 15689.89
+      },
+      {
+        "date": "2026-03-10",
+        "expense": 4636.77
+      },
+      {
+        "date": "2026-03-11",
+        "expense": 19932.629999999997
+      },
+      {
+        "date": "2026-03-12",
+        "expense": 11793.38
+      },
+      {
+        "date": "2026-03-13",
+        "expense": 10028.919999999998
+      },
+      {
+        "date": "2026-03-14",
+        "expense": 10407.76
+      },
+      {
+        "date": "2026-03-15",
+        "expense": 15499.76
+      },
+      {
+        "date": "2026-03-16",
+        "expense": 9543.34
+      },
+      {
+        "date": "2026-03-17",
+        "expense": 8151.1900000000005
+      },
+      {
+        "date": "2026-03-18",
+        "expense": 18222.85
+      },
+      {
+        "date": "2026-03-19",
+        "expense": 22729.32
+      },
+      {
+        "date": "2026-03-20",
+        "expense": 19671.359999999997
+      },
+      {
+        "date": "2026-03-21",
+        "expense": 20104.9
+      },
+      {
+        "date": "2026-03-22",
+        "expense": 19159.82
+      },
+      {
+        "date": "2026-03-23",
+        "expense": 21754.29
+      },
+      {
+        "date": "2026-03-24",
+        "expense": 15099.439999999999
+      },
+      {
+        "date": "2026-03-25",
+        "expense": 12345.84
+      },
+      {
+        "date": "2026-03-26",
+        "expense": 10955.609999999999
+      },
+      {
+        "date": "2026-03-27",
+        "expense": 29131.100000000006
+      },
+      {
+        "date": "2026-03-28",
+        "expense": 24243.499999999996
+      },
+      {
+        "date": "2026-03-29",
+        "expense": 8888.18
+      },
+      {
+        "date": "2026-03-30",
+        "expense": 8368.41
+      },
+      {
+        "date": "2026-03-31",
+        "expense": 22259.019999999997
+      },
+      {
+        "date": "2026-04-01",
+        "expense": 14035.060000000001
+      },
+      {
+        "date": "2026-04-02",
+        "expense": 27344.070000000003
+      },
+      {
+        "date": "2026-04-03",
+        "expense": 10508.06
+      },
+      {
+        "date": "2026-04-04",
+        "expense": 10191.85
+      },
+      {
+        "date": "2026-04-05",
+        "expense": 0
+      }
+    ],
+    "incomeSources": [
+      {
+        "category": "Legal",
+        "amount": 893712.52,
+        "percentage": 14.3,
+        "context": "14.3% of total income"
+      },
+      {
+        "category": "Food",
+        "amount": 852835.83,
+        "percentage": 13.6,
+        "context": "13.6% of total income"
+      },
+      {
+        "category": "Utilities",
+        "amount": 829607.6,
+        "percentage": 13.3,
+        "context": "13.3% of total income"
+      },
+      {
+        "category": "Rent",
+        "amount": 789671.16,
+        "percentage": 12.6,
+        "context": "12.6% of total income"
+      },
+      {
+        "category": "Salary",
+        "amount": 777104.46,
+        "percentage": 12.4,
+        "context": "12.4% of total income"
+      },
+      {
+        "category": "Transport",
+        "amount": 754177.77,
+        "percentage": 12.1,
+        "context": "12.1% of total income"
+      },
+      {
+        "category": "Marketing",
+        "amount": 687046.63,
+        "percentage": 11,
+        "context": "11% of total income"
+      },
+      {
+        "category": "Software",
+        "amount": 674092.65,
+        "percentage": 10.8,
+        "context": "10.8% of total income"
+      }
+    ],
+    "insights": {
+      "topCategory": {
+        "category": "Software",
+        "amount": 891637.91,
+        "percentage": 14,
+        "context": "14% of total expenses"
+      },
+      "biggestExpense": {
+        "amount": "4998.93",
+        "category": "Marketing",
+        "date": "2026-02-15"
+      },
+      "expenseRatio": 101.8
+    }
+  },
+  "message": "Professional Dashboard analytics generated successfully",
+  "success": true
+}
+
+```
