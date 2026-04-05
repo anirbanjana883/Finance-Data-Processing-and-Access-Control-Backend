@@ -4,6 +4,7 @@ import morgan from 'morgan';
 import swaggerUi from 'swagger-ui-express'; 
 import yaml from 'yamljs';                  
 import path from 'path';
+import { logger } from './utils/logger.js';
 
 //  custom error class
 import authRoutes from './routes/auth.route.js';
@@ -40,7 +41,10 @@ app.get('/health', (req, res) => {
 
 // --- Global Error Handler ---
 app.use((err, req, res, next) => {
+  
   if (err instanceof ApiError) {
+    logger.warn(`[${req.method} ${req.originalUrl}] API Error: ${err.message}`);
+
     return res.status(err.statusCode).json({
       success: err.success,
       message: err.message,
@@ -49,10 +53,11 @@ app.use((err, req, res, next) => {
     });
   }
 
-  console.error(err);
+  logger.error(`[${req.method} ${req.originalUrl}] Unhandled Server Error:`, err);
+  
   return res.status(500).json({
     success: false,
-    message: err.message || 'Internal Server Error'
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal Server Error'
   });
 });
 

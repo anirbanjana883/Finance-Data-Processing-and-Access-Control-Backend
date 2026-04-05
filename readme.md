@@ -4,9 +4,34 @@ A highly secure, multi-tenant B2B financial backend designed to handle organizat
 
 ---
 
+## 🚀 Tech Stack
+
+This project leverages a modern Node.js ecosystem, prioritizing type-safety (via Zod), developer experience, and enterprise-grade security.
+
+**Core Infrastructure:**
+* **Runtime:** Node.js
+* **Framework:** Express.js (v5)
+* **Database:** PostgreSQL
+* **ORM:** Prisma (`@prisma/client`) - *For type-safe database queries and interactive transactions.*
+
+**Security & Validation:**
+* **Authentication:** JSON Web Tokens (`jsonwebtoken`) & bcrypt (`bcryptjs`)
+* **Validation:** Zod (`zod`) - *Strict runtime schema validation.*
+* **Rate Limiting:** `express-rate-limit` - *Brute-force and DDoS protection.*
+* **CORS:** `cors` - *Cross-Origin Resource Sharing middleware.*
+
+**Monitoring & Documentation:**
+* **API Docs:** Swagger UI (`swagger-ui-express`, `yamljs`) - *OpenAPI 3.0 specification.*
+* **Logging:** Winston (`winston`) & Morgan (`morgan`) - *Structured application and HTTP request logging.*
+
+**Development Tools:**
+* **Seeding:** Faker.js (`@faker-js/faker`) - *For generating massive realistic datasets.*
+* **Hot Reloading:** Nodemon
+
 ## 🏛️ System Architecture
 
 The platform follows a classic N-Tier Architecture with a strict "Fat Service, Skinny Controller" design pattern. Every request passes through a gauntlet of security middlewares before business logic is executed.
+
 
 ### Architecture Diagram
 
@@ -121,6 +146,11 @@ npm run seed
 npm run dev
 ```
 
+**6. Swagger API docs:**
+
+```bash
+http://localhost:5000/api-docs
+```
 ---
 
 ## 📡 Detailed API Documentation

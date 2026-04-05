@@ -1,13 +1,12 @@
 openapi: 3.0.0
 info:
-  title: Finance Dashboard API
-  description: API documentation for the Personal Finance Dashboard backend.
+  title: Enterprise Finance Dashboard API
+  description: Multi-tenant B2B financial backend with granular RBAC and analytical aggregations.
   version: 1.0.0
 servers:
   - url: http://localhost:5000/api
     description: Local Development Server
 
-# This tells Swagger we use Bearer Tokens!
 components:
   securitySchemes:
     bearerAuth:
@@ -17,21 +16,24 @@ components:
 
 tags:
   - name: Auth
-    description: Authentication and User Onboarding
+    description: System Bootstrapping and Authentication
   - name: Users
-    description: Admin User Management
+    description: Tenant Employee Management (Admin Only)
   - name: Transactions
     description: Financial Records CRUD
+  - name: Dashboard
+    description: Analytics and Aggregations
 
 paths:
   # -------------------------
   # AUTHENTICATION ROUTES
   # -------------------------
-  /auth/register:
+  /auth/bootstrap:
     post:
       tags:
         - Auth
-      summary: Register a new user
+      summary: Bootstrap the Master Admin (One-time use)
+      description: Creates the foundational God-Mode account. Locks permanently after first use.
       requestBody:
         required: true
         content:
@@ -42,45 +44,82 @@ paths:
               properties:
                 name:
                   type: string
-                  example: Anirban
+                  example: System Admin
                 email:
                   type: string
-                  example: admin@example.com
+                  example: admin@system.com
                 password:
                   type: string
-                  example: mysecurepassword123
+                  example: supersecurepassword
       responses:
         '201':
-          description: User registered successfully
-        '400':
-          description: Missing required fields
-        '409':
-          description: Email already exists
+          description: Master Admin created successfully
+        '403':
+          description: System already bootstrapped
 
-  /auth/login:
+  /auth/organization:
     post:
       tags:
         - Auth
-      summary: Login and receive a JWT
+      summary: Provision a new Organization (Tenant)
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [email, password]
+              required: [orgName, adminUser]
+              properties:
+                orgName:
+                  type: string
+                  example: Stark Industries
+                adminUser:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      example: Tony Stark
+                    email:
+                      type: string
+                      example: tony@stark.com
+                    password:
+                      type: string
+                      example: iamironman
+      responses:
+        '201':
+          description: Organization provisioned successfully
+
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Tenant Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, orgId]
               properties:
                 email:
                   type: string
-                  example: admin@example.com
+                  example: tony@stark.com
                 password:
                   type: string
-                  example: mysecurepassword123
+                  example: iamironman
+                orgId:
+                  type: string
+                  example: 1234abcd-5678-efgh-9012-ijklmnopq
       responses:
         '200':
-          description: Login successful
+          description: Login successful, returns JWT
         '401':
           description: Invalid credentials
+        '403':
+          description: Account is deactivated
 
   /auth/me:
     get:
@@ -88,9 +127,254 @@ paths:
         - Auth
       summary: Get current logged-in user profile
       security:
-        - bearerAuth: [] # This puts the padlock icon on this route!
+        - bearerAuth: []
       responses:
         '200':
           description: Profile retrieved
-        '401':
-          description: Unauthorized request
+
+  # -------------------------
+  # USER MANAGEMENT ROUTES
+  # -------------------------
+  /users:
+    get:
+      tags:
+        - Users
+      summary: Get all users in the organization
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Fuzzy search by name or email
+      responses:
+        '200':
+          description: List of users with pagination metadata
+    post:
+      tags:
+        - Users
+      summary: Invite a new employee
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password, role]
+              properties:
+                name:
+                  type: string
+                  example: Peter Parker
+                email:
+                  type: string
+                  example: peter@stark.com
+                password:
+                  type: string
+                role:
+                  type: string
+                  enum: [ADMIN, ANALYST, VIEWER]
+      responses:
+        '201':
+          description: Employee invited successfully
+
+  /users/{id}/role:
+    patch:
+      tags:
+        - Users
+      summary: Update employee role
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role:
+                  type: string
+                  enum: [ADMIN, ANALYST, VIEWER]
+      responses:
+        '200':
+          description: Role updated
+
+  /users/{id}/status:
+    patch:
+      tags:
+        - Users
+      summary: Deactivate or activate employee
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [ACTIVE, INACTIVE]
+      responses:
+        '200':
+          description: Status updated
+
+  # -------------------------
+  # TRANSACTION ROUTES
+  # -------------------------
+  /transactions:
+    get:
+      tags:
+        - Transactions
+      summary: Fetch financial ledger
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum: [INCOME, EXPENSE]
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: sortBy
+          schema:
+            type: string
+            default: date
+        - in: query
+          name: order
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: List of transactions with pagination
+    post:
+      tags:
+        - Transactions
+      summary: Create a financial record
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount, type, category]
+              properties:
+                amount:
+                  type: number
+                  example: 4500.50
+                type:
+                  type: string
+                  enum: [INCOME, EXPENSE]
+                category:
+                  type: string
+                  example: Software
+                notes:
+                  type: string
+                  example: AWS Hosting
+                date:
+                  type: string
+                  format: date-time
+      responses:
+        '201':
+          description: Transaction created
+
+  /transactions/{id}:
+    patch:
+      tags:
+        - Transactions
+      summary: Update a transaction
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: number
+                category:
+                  type: string
+      responses:
+        '200':
+          description: Transaction updated
+    delete:
+      tags:
+        - Transactions
+      summary: Soft delete (Archive) a transaction
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transaction archived successfully
+
+  # -------------------------
+  # DASHBOARD ROUTES
+  # -------------------------
+  /dashboard/summary:
+    get:
+      tags:
+        - Dashboard
+      summary: Get executive analytics summary
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Returns aggregated charts, trends, and KPIs
