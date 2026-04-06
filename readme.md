@@ -138,7 +138,7 @@ If you have populated the database using the `npm run seed` command, the followi
 | Role | Login Email | Password | Access Level & Capabilities |
 | :--- | :--- | :--- | :--- |
 | **ADMIN** | `anirban@example.com` | `anirban@123` | **Full Access.** Can create/edit/delete transactions, invite new team members, change user roles, and view the executive dashboard. |
-| **ANALYST** | `ga1@example.com` | `ganalyst@123` | **Standard Access.** Can view and create financial transactions and view the dashboard. Cannot manage users or organization settings. |
+| **ANALYST** | `ga1@example.com` | `ganalyst1@123` | **Standard Access.** Can view and create financial transactions and view the dashboard. Cannot manage users or organization settings. |
 | **VIEWER** | `mv1@example.com` | `mviewer@123` | **Restricted Access.** Read-only access to the aggregated Dashboard summary. Strictly blocked from viewing or editing raw ledger transactions. |
 
 *(Note: In a production environment, passwords are encrypted via bcrypt. These raw passwords are only available for local testing and evaluation purposes).*
